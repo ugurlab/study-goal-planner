@@ -1,0 +1,1032 @@
+<!doctype html>
+<!--
+Study Goal Planner 1.0 — Desk & Bench
+https://github.com/ugurlab/study-goal-planner
+
+MIT License
+
+Copyright (c) 2026 Ugur Comlekcioglu
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Study Goal Planner</title>
+<style>
+:root{
+  color-scheme:light;
+  --bench:#e8edea;--paper:#ffffff;--ink:#15232a;--muted:#53666c;--line:#c7d1cd;
+  --grid:rgba(21,35,42,.055);--nitrile:#3355d1;--nitrile-dark:#2441a8;--agar:#e5ae45;
+  --soft:#f4f6f5;--gutter:clamp(16px,4vw,32px);
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bench);color:var(--ink);
+  font-family:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:17px;line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+button,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--agar);outline-offset:2px;border-radius:4px}
+.wrap{max-width:1240px;margin:0 auto;padding:0 var(--gutter)}
+
+/* top bar */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 0}
+.brand{font-weight:700;font-size:20px;letter-spacing:-.02em}
+.brand small{font-weight:400;color:var(--muted);font-size:14px;margin-left:8px}
+.brand .family{display:block;font-size:13px;font-weight:600;color:var(--muted);text-decoration:none;letter-spacing:0;margin-bottom:1px}
+.brand .family span{font-weight:400;padding:0 .15em}
+.brand .family:hover{color:var(--ink);text-decoration:underline}
+.top-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;border-radius:10px;
+  font-weight:600;font-size:15px;border:1.5px solid var(--ink);background:var(--paper);cursor:pointer;
+  transition:background .15s,color .15s,border-color .15s}
+.btn:hover{background:var(--ink);color:var(--paper)}
+.btn.primary{background:var(--nitrile);border-color:var(--nitrile);color:#fff}
+.btn.primary:hover{background:var(--nitrile-dark);border-color:var(--nitrile-dark)}
+.btn.quiet{border-color:var(--line);font-weight:500}
+.btn.quiet:hover{border-color:var(--ink)}
+.btn[disabled]{opacity:.4;pointer-events:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(20px,3vw,40px);align-items:start;padding-bottom:48px}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:clamp(18px,2.6vw,30px)}
+
+/* step pills */
+.pills{list-style:none;margin:0 0 22px;padding:0;display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+.pills button{width:100%;border:0;background:transparent;padding:0;cursor:pointer;text-align:left}
+.pills .bar{display:block;height:5px;border-radius:3px;background:var(--line);margin-bottom:6px}
+.pills .lbl{display:block;font-size:12px;color:var(--muted);line-height:1.2}
+.pills .done .bar{background:var(--ink)}
+.pills .current .bar{background:var(--nitrile)}
+.pills .current .lbl{color:var(--ink);font-weight:600}
+
+.step{display:none}
+.step.on{display:block}
+.step-num{font-size:15px;color:var(--nitrile);font-weight:600;margin:0}
+.step h2{font-size:clamp(26px,2.8vw,34px);line-height:1.1;letter-spacing:-.025em;font-weight:650;font-stretch:88%;margin:2px 0 8px}
+.step .intro{color:var(--muted);margin:0 0 20px;max-width:60ch}
+
+label.f{display:block;font-weight:600;font-size:15px;margin:16px 0 6px}
+label.f span{font-weight:400;color:var(--muted)}
+input[type=text],input[type=date],input[type=number],textarea{
+  width:100%;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--paper);font-size:16px}
+input:focus,textarea:focus{border-color:var(--nitrile);outline:none}
+textarea{resize:vertical;min-height:84px;line-height:1.45}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.rows{display:grid;gap:10px}
+.r{display:grid;gap:8px;grid-template-columns:150px minmax(0,1fr)}
+.r.ifthen{grid-template-columns:1fr 1fr}
+.r .tag{font-size:13px;color:var(--muted);display:block;margin-bottom:3px}
+
+.examples{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 6px}
+.ex{border-radius:10px;padding:10px 12px;font-size:15px;background:var(--soft);border-left:4px solid var(--line)}
+.ex.good{border-left-color:var(--nitrile)}
+.ex b{display:block;font-size:13px;color:var(--muted);font-weight:600}
+
+details.why{margin-top:22px;border-top:1px solid var(--line);padding-top:12px}
+details.why summary{cursor:pointer;font-weight:600;font-size:15px;color:var(--muted)}
+details.why p{font-size:15px;color:var(--muted);margin:8px 0 0;max-width:62ch}
+
+.hint{font-size:14px;color:var(--muted);margin:8px 0 0}
+.warn{font-size:14px;margin:6px 0 0;padding:8px 10px;border-radius:8px;background:#fbf3e2;border-left:4px solid var(--agar)}
+
+.checks{list-style:none;margin:0;padding:0;border-top:2px solid var(--ink)}
+.checks li{border-bottom:1px solid var(--line);padding:12px 0}
+.checks label{display:grid;grid-template-columns:26px 1fr;gap:8px;cursor:pointer}
+.checks input{width:20px;height:20px;margin:3px 0 0;accent-color:var(--nitrile)}
+.checks strong{display:block}
+.checks span{color:var(--muted);font-size:15px}
+
+.nav{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:26px;padding-top:18px;border-top:1px solid var(--line)}
+.finish{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+.saved{font-size:13px;color:var(--muted);margin-top:14px}
+
+/* preview column */
+.preview{position:sticky;top:16px}
+.preview-head{display:flex;justify-content:space-between;align-items:baseline;margin:0 0 10px}
+.preview-head h3{margin:0;font-size:16px}
+.preview-head span{font-size:13px;color:var(--muted)}
+
+/* ===== the card (screen and print) ===== */
+.card{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:26px 26px 20px;
+  box-shadow:0 24px 50px -30px rgba(21,35,42,.35);font-size:14px;line-height:1.45;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:20px 20px}
+.c-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;border-bottom:2px solid var(--ink);padding-bottom:8px}
+.c-title{font-size:22px;font-weight:700;letter-spacing:-.02em;margin:0}
+.c-meta{font-size:12px;color:var(--muted);text-align:right}
+.c-meta div{white-space:nowrap}
+.c-goal{margin:14px 0 4px}
+.c-label{font-size:11.5px;font-weight:700;color:var(--muted);margin:0 0 3px;letter-spacing:.01em}
+.c-goal .c-text{font-size:19px;font-weight:600;line-height:1.3;letter-spacing:-.01em}
+.c-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-top:12px;border-top:1px solid var(--line)}
+.c-box{padding:10px 12px 10px 0;border-bottom:1px solid var(--line)}
+.c-box:nth-child(even){padding:10px 0 10px 12px;border-left:1px solid var(--line)}
+.c-box.full{grid-column:1/-1;padding-right:0;padding-left:0;border-left:0}
+.c-text{white-space:pre-wrap;overflow-wrap:anywhere}
+.blank{display:block;border-bottom:1px solid var(--line);height:20px}
+.c-list{list-style:none;margin:0;padding:0}
+.c-list li{display:grid;grid-template-columns:auto 1fr;gap:8px;padding:3px 0}
+.c-list .d{font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
+.c-ifthen li{grid-template-columns:1fr 1fr;gap:12px}
+.c-ifthen b{color:var(--muted);font-weight:600;margin-right:4px}
+.c-steps li{grid-template-columns:16px 1fr auto}
+.c-steps .bx{width:14px;height:14px;border:1.5px solid var(--ink);border-radius:3px;margin-top:2px}
+.c-checks{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:2px}
+.c-checks span{display:inline-flex;align-items:center;gap:6px;font-size:12.5px}
+.c-checks i{display:inline-block;width:12px;height:12px;border:1.5px solid var(--ink);border-radius:3px}
+.c-checks .y i{background:var(--ink)}
+.c-foot{display:flex;justify-content:space-between;gap:10px;margin-top:12px;font-size:11px;color:var(--muted)}
+
+/* about dialog */
+dialog.about{border:1px solid var(--line);border-radius:16px;padding:0;max-width:min(760px,calc(100vw - 32px));max-height:calc(100vh - 48px);
+  background:var(--paper);color:var(--ink);box-shadow:0 30px 70px -20px rgba(21,35,42,.45)}
+dialog.about::backdrop{background:rgba(21,35,42,.45)}
+.about-in{padding:clamp(20px,3vw,32px);overflow:auto;max-height:calc(100vh - 50px)}
+.about-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.x{border:1.5px solid var(--line);background:var(--paper);border-radius:10px;width:40px;height:40px;font-size:22px;line-height:1;cursor:pointer;flex:0 0 auto}
+.x:hover{border-color:var(--ink)}
+.about h2{font-size:24px;margin:0 0 8px;letter-spacing:-.02em}
+.about p,.about li{color:var(--muted);font-size:15.5px;max-width:70ch}
+.about ol{padding-left:20px}
+.about li{margin-bottom:6px}
+
+.foot{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding:18px 0 28px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.foot a{color:inherit}
+input[type=file]{display:none}
+.msg{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:10px;font-size:15px;display:none;z-index:5}
+.msg.on{display:block}
+
+@media (max-width:980px){
+  .layout{grid-template-columns:1fr}
+  .preview{position:static}
+}
+@media (max-width:560px){
+  .pills{grid-template-columns:repeat(4,1fr);row-gap:10px}
+  .top{align-items:flex-start}
+  .brand small{display:block;margin:0}
+  .top-actions .btn{padding:8px 12px;font-size:14px}
+  .row2,.examples,.r,.r.ifthen{grid-template-columns:1fr}
+  .r.ifthen{padding-bottom:12px;border-bottom:1px solid var(--line)}
+  .r{gap:4px}
+  .card{padding:18px 14px 14px}
+  .c-grid{grid-template-columns:1fr}
+  .c-box,.c-box:nth-child(even){padding:10px 0;border-left:0}
+  .c-ifthen li{grid-template-columns:1fr;gap:0}
+  .c-head{flex-direction:column;align-items:flex-start}
+  .c-meta{text-align:left}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ===== print: only the card, one A4 page ===== */
+@page{size:A4;margin:14mm}
+@media print{
+  body{background:#fff}
+  .top,.panel,.preview-head,.foot,.about,.msg,dialog{display:none!important}
+  .wrap{max-width:none;padding:0}
+  .layout{display:block;padding:0}
+  .preview{position:static}
+  .card{border:0;box-shadow:none;border-radius:0;padding:0;font-size:12.5px;background-image:none}
+  .c-goal .c-text{font-size:17px}
+  .blank{height:22px}
+  .c-box,.c-list li{break-inside:avoid}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+.c-part{margin-top:4px;color:var(--muted)}
+.btn.lang{border-radius:999px;padding-left:14px;padding-right:14px}
+/* ===== views and card list ===== */
+:root{--done:#2f8a4e;--done-bg:#eaf5ee;--done-line:#9fd0b0}
+.view{display:none}
+.view.on{display:block}
+.layout.view.on{display:grid}
+.home{padding-bottom:48px}
+.home-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin:6px 0 22px}
+.home-head h1{font-size:clamp(30px,3.4vw,44px);line-height:1.08;letter-spacing:-.03em;font-weight:650;font-stretch:88%;margin:0}
+.home-head p{color:var(--muted);margin:6px 0 0;max-width:56ch}
+.home-actions{display:flex;gap:10px;flex-wrap:wrap}
+.data-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:28px;padding-top:16px;border-top:1px solid var(--line)}
+.data-row p{margin:0 auto 0 0;font-size:14px;color:var(--muted)}
+.group-h{font-size:18px;margin:26px 0 12px;letter-spacing:-.01em;display:flex;gap:8px;align-items:baseline}
+.group-h span{font-weight:500;color:var(--muted);font-size:15px}
+.tiles{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:16px}
+.tile{background:var(--paper);border:1px solid var(--line);border-left:5px solid var(--nitrile);border-radius:14px;display:flex;flex-direction:column}
+.tile.done{background:var(--done-bg);border-color:var(--done-line);border-left-color:var(--done)}
+.tile-open{all:unset;cursor:pointer;display:block;padding:16px 18px 10px;flex:1;border-radius:13px 13px 0 0}
+.tile-open:focus-visible{outline:3px solid var(--agar);outline-offset:-3px}
+.tile-open:hover .tile-title{text-decoration:underline}
+.tile-title{font-size:19px;font-weight:650;letter-spacing:-.015em;line-height:1.25;margin:0;overflow-wrap:anywhere}
+.tile-course{font-size:14px;color:var(--muted);margin:2px 0 0}
+.tile-goal{font-size:15px;margin:10px 0 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.tile-due{font-size:14px;color:var(--muted);margin:10px 0 0}
+.tile-due.late{color:#8a5a00;font-weight:600}
+.tile-due.ok{color:var(--done);font-weight:600}
+.tile-bar{display:flex;gap:8px;align-items:center;padding:10px 12px 12px 18px;border-top:1px solid var(--line)}
+.tile.done .tile-bar{border-top-color:var(--done-line)}
+.tile-bar .sp{flex:1}
+.mini{border:1.5px solid var(--line);background:var(--paper);border-radius:9px;padding:6px 10px;font-size:14px;font-weight:500;cursor:pointer}
+.mini:hover{border-color:var(--ink)}
+.mini.achv{display:inline-flex;align-items:center;gap:7px;font-weight:600}
+.mini.achv i{width:16px;height:16px;border:1.5px solid var(--ink);border-radius:4px;display:inline-block;position:relative}
+.tile.done .mini.achv{background:var(--done);border-color:var(--done);color:#fff}
+.tile.done .mini.achv i{border-color:#fff;background:#fff}
+.tile.done .mini.achv i::after{content:"";position:absolute;left:4px;top:0;width:5px;height:10px;border:solid var(--done);border-width:0 2.5px 2.5px 0;transform:rotate(45deg)}
+.mini.del{color:var(--muted)}
+.mini.del.armed{color:#fff;background:#a33a2a;border-color:#a33a2a}
+.empty{background:var(--paper);border:1.5px dashed var(--line);border-radius:14px;padding:28px;text-align:center;color:var(--muted)}
+.empty p{margin:0 auto 14px;max-width:46ch}
+.ed-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:0 0 18px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.ed-bar #toListBtn.armed{background:#a33a2a;border-color:#a33a2a}
+.btn.dark{background:var(--ink);color:#fff}
+.btn.dark:hover{background:#000}
+.banner{margin:0 0 16px;padding:10px 12px;border-radius:10px;background:#fbf3e2;border-left:4px solid var(--agar);font-size:15px}
+#printCard{display:none}
+.badge{display:inline-block;vertical-align:middle;font-size:12px;font-weight:600;letter-spacing:0;color:#7a5200;background:#fbf3e2;border:1px solid #efd9a8;border-radius:999px;padding:1px 8px;margin-left:4px}
+.sample-note{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.sample-note .mini.armed{color:#fff;background:#a33a2a;border-color:#a33a2a}
+@media (max-width:560px){
+  .home-actions .btn,.data-row .btn{flex:1 1 auto}
+  .tile-bar{flex-wrap:wrap;padding-left:14px}
+}
+/* print: only the card being printed */
+@media print{
+  body *{visibility:hidden}
+  #printCard,#printCard *{visibility:visible}
+  #printCard{display:block!important;position:absolute;left:0;top:0;width:100%}
+  .view,.top,.foot,.msg,dialog{display:none!important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><a class="family" href="https://ugurlab.github.io/desk-and-bench/">Desk <span>&amp;</span> Bench</a>Study Goal Planner<small data-t="version"></small></div>
+    <div class="top-actions">
+      <button class="btn quiet" id="aboutBtn" type="button" aria-haspopup="dialog" aria-controls="about" data-t="aboutBtn"></button>
+      <button class="btn quiet lang" id="langBtn" type="button"></button>
+    </div>
+  </header>
+
+  <dialog class="about" id="about" aria-labelledby="aboutTitle">
+   <div class="about-in">
+    <div class="about-head"><h2 id="aboutTitle" data-t="aboutTitle"></h2><button class="x" type="button" id="aboutClose">&times;</button></div>
+    <p data-t="aboutIntro"></p>
+    <ol>
+      <li data-th="a1"></li>
+      <li data-th="a2"></li>
+      <li data-th="a3"></li>
+      <li data-th="a4"></li>
+    </ol>
+    <p data-t="refs"></p>
+    <ol>
+      <li>Doran, G. T. (1981). There's a S.M.A.R.T. way to write management's goals and objectives. <em>Management Review</em>, 70(11), 35–36.</li>
+      <li>Gollwitzer, P. M., &amp; Sheeran, P. (2006). Implementation intentions and goal achievement: A meta-analysis of effects and processes. <em>Advances in Experimental Social Psychology</em>, 38, 69–119. https://doi.org/10.1016/S0065-2601(06)38002-1</li>
+      <li>Locke, E. A., &amp; Latham, G. P. (2002). Building a practically useful theory of goal setting and task motivation: A 35-year odyssey. <em>American Psychologist</em>, 57(9), 705–717. https://doi.org/10.1037/0003-066X.57.9.705</li>
+      <li>Oettingen, G. (2012). Future thought and behaviour change. <em>European Review of Social Psychology</em>, 23(1), 1–63. https://doi.org/10.1080/10463283.2011.643698</li>
+    </ol>
+   </div>
+  </dialog>
+
+  <!-- ===== home: list of cards ===== -->
+  <main class="view home" id="home">
+    <div class="home-head">
+      <div><h1 data-t="homeTitle"></h1><p data-t="homeIntro"></p></div>
+      <div class="home-actions">
+        <button class="btn quiet" type="button" id="exampleBtn" data-t="addSamples"></button>
+        <button class="btn primary" type="button" id="newBtn" data-t="newCard"></button>
+      </div>
+    </div>
+    <div class="banner sample-note" id="sampleNote" hidden><span data-t="sampleNote"></span> <button class="mini" type="button" id="delSamplesBtn" data-t="delSamples"></button></div>
+    <div id="list"></div>
+    <div class="data-row">
+      <p data-t="storageNote"></p>
+      <button class="btn quiet" type="button" id="backupBtn" data-t="backup"></button>
+      <button class="btn quiet" type="button" id="restoreBtn" data-t="restore"></button>
+      <input type="file" id="fileIn" accept=".json,application/json">
+    </div>
+  </main>
+
+  <!-- ===== editor ===== -->
+  <main class="view layout" id="editor">
+    <section class="panel" id="form">
+      <div class="ed-bar">
+        <button class="btn primary" type="button" id="toListBtn" data-t="toList"></button>
+        <button class="btn primary" type="button" id="saveTopBtn" data-t="saveCard"></button>
+      </div>
+      <ol class="pills" id="pills"></ol>
+
+      <!-- 1 -->
+      <div class="step" data-step="1">
+        <p class="step-num"></p>
+        <h2 data-t="s1h"></h2>
+        <p class="intro" data-t="s1i"></p>
+        <label class="f" for="title" data-t="titleL"></label>
+        <input type="text" id="title" data-k="title" data-tp="titlePh" maxlength="80">
+        <div class="examples" style="margin-top:18px">
+          <div class="ex"><b data-t="vague"></b><span data-t="vagueEx"></span></div>
+          <div class="ex good"><b data-t="clear"></b><span data-t="clearEx"></span></div>
+        </div>
+        <label class="f" for="goal" data-t="goalL"></label>
+        <textarea id="goal" data-k="goal" data-tp="goalPh"></textarea>
+        <div class="row2">
+          <div><label class="f" for="name"><span class="l" data-t="nameL"></span> <span data-t="opt"></span></label><input type="text" id="name" data-k="name" autocomplete="name"></div>
+          <div><label class="f" for="course"><span class="l" data-t="courseL"></span> <span data-t="opt"></span></label><input type="text" id="course" data-k="course" data-tp="coursePh"></div>
+        </div>
+        <details class="why"><summary data-t="w1s"></summary><p data-th="w1p"></p></details>
+      </div>
+
+      <!-- 2 -->
+      <div class="step" data-step="2">
+        <p class="step-num"></p>
+        <h2 data-t="s2h"></h2>
+        <p class="intro" data-t="s2i"></p>
+        <label class="f" for="measure" data-t="measureL"></label>
+        <input type="text" id="measure" data-k="measure" data-tp="measurePh">
+        <label class="f" for="target" data-t="targetL"></label>
+        <input type="text" id="target" data-k="target" data-tp="targetPh">
+        <details class="why"><summary data-t="w2s"></summary><p data-th="w2p"></p></details>
+      </div>
+
+      <!-- 3 -->
+      <div class="step" data-step="3">
+        <p class="step-num"></p>
+        <h2 data-t="s3h"></h2>
+        <p class="intro" data-t="s3i"></p>
+        <div class="row2">
+          <div><label class="f" for="deadline" data-t="deadlineL"></label><input type="date" id="deadline" data-k="deadline"></div>
+          <div><label class="f" for="hours"><span class="l" data-t="hoursL"></span> <span data-t="hoursOpt"></span></label><input type="number" id="hours" data-k="hours" min="0" max="168" step="0.5"></div>
+        </div>
+        <label class="f"><span class="l" data-t="msL"></span> <span data-t="opt"></span></label>
+        <div class="rows" id="milestones"></div>
+        <p class="warn" id="dateWarn" hidden></p>
+      </div>
+
+      <!-- 4 -->
+      <div class="step" data-step="4">
+        <p class="step-num"></p>
+        <h2 data-t="s4h"></h2>
+        <p class="intro" data-t="s4i"></p>
+        <label class="f" for="why" data-t="whyL"></label>
+        <textarea id="why" data-k="why"></textarea>
+        <label class="f" for="outcome" data-t="outcomeL"></label>
+        <textarea id="outcome" data-k="outcome" data-tp="outcomePh"></textarea>
+        <label class="f" for="plan"><span class="l" data-t="planL"></span> <span data-t="opt"></span></label>
+        <input type="text" id="plan" data-k="plan" data-tp="planPh">
+        <details class="why"><summary data-t="w4s"></summary><p data-th="w4p"></p></details>
+      </div>
+
+      <!-- 5 -->
+      <div class="step" data-step="5">
+        <p class="step-num"></p>
+        <h2 data-t="s5h"></h2>
+        <p class="intro" data-t="s5i"></p>
+        <label class="f" for="cost" data-t="costL"></label>
+        <textarea id="cost" data-k="cost" data-tp="costPh"></textarea>
+      </div>
+
+      <!-- 6 -->
+      <div class="step" data-step="6">
+        <p class="step-num"></p>
+        <h2 data-t="s6h"></h2>
+        <p class="intro" data-t="s6i"></p>
+        <div class="rows" id="obstacles"></div>
+        <details class="why"><summary data-t="w6s"></summary><p data-th="w6p"></p></details>
+      </div>
+
+      <!-- 7 -->
+      <div class="step" data-step="7">
+        <p class="step-num"></p>
+        <h2 data-t="s7h"></h2>
+        <p class="intro" data-t="s7i"></p>
+        <div class="rows" id="steps"></div>
+      </div>
+
+      <!-- 8 -->
+      <div class="step" data-step="8">
+        <p class="step-num"></p>
+        <h2 data-t="s8h"></h2>
+        <p class="intro" data-t="s8i"></p>
+        <ul class="checks" id="checks"></ul>
+        <div id="gaps"></div>
+        <div class="finish">
+          <button class="btn primary" type="button" id="saveBtn" data-t="saveCard"></button>
+          <button class="btn" type="button" id="printBtn" data-t="print"></button>
+        </div>
+        <p class="hint" data-t="pdfHint"></p>
+      </div>
+
+      <div class="nav">
+        <button class="btn quiet" type="button" id="prevBtn" data-t="back"></button>
+        <button class="btn quiet" type="button" id="resetBtn" data-t="reset"></button>
+        <button class="btn primary" type="button" id="nextBtn" data-t="next"></button>
+      </div>
+    </section>
+
+    <aside class="preview" id="previewCol">
+      <div class="preview-head"><h3 data-t="yourCard"></h3><span data-t="whatPrints"></span></div>
+      <article class="card" id="card"></article>
+    </aside>
+  </main>
+
+  <footer class="foot">
+    <span data-th="footL"></span>
+  </footer>
+</div>
+<article class="card" id="printCard" aria-hidden="true"></article>
+<div class="msg" id="msg" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ---------- texts ---------- */
+var T={
+en:{
+  version:'1.0',aboutBtn:'About the method',close:'Close',
+  langBtn:'Türkçe',langLabel:'Türkçe kullan',
+  aboutTitle:'Why these steps?',
+  aboutIntro:'Study Goal Planner walks you through each goal in eight short steps. Each step comes from research on goals or from a well known checklist:',
+  a1:'<strong>Clear and challenging goals.</strong> In many studies, specific and challenging goals led to better performance than vague goals such as "do your best" (Locke &amp; Latham, 2002).',
+  a2:'<strong>Outcome, then obstacle.</strong> Picturing the outcome you want and then the obstacle that stands in its way, a technique called mental contrasting, has been studied as a way to turn wishes into commitment (Oettingen, 2012).',
+  a3:'<strong>If–then plans.</strong> Deciding in advance "if this happens, then I will do that" helped people reach their goals; a meta-analysis found a medium-to-large effect (Gollwitzer &amp; Sheeran, 2006).',
+  a4:'<strong>The final check.</strong> The five questions in step 8 follow the SMART checklist. SMART comes from management writing (Doran, 1981) and is a useful reminder rather than a tested method.',
+  refs:'References',formLabel:'Write your goal',previewLabel:'Card preview',
+  homeTitle:'My study goals',homeIntro:'One card for each goal. Open a card to change it, and tick it when you reach the goal.',
+  newCard:'New card',addSamples:'Add example cards',sampleBadge:'Example',sampleNote:'The cards marked "Example" show how a card is filled in. Open them to see every step, then delete them one by one or all at once.',delSamples:'Delete example cards',delSamplesConfirm:'Click again to delete',tSamplesDeleted:'Example cards deleted.',tSamplesAdded:'Example cards added.',inProgress:'In progress',achievedH:'Achieved',
+  emptyText:'You have no cards yet. Start a new card, or add the example cards to see how one is filled in.',
+  storageNote:'Your cards are kept in this browser only. Back them up now and then.',
+  backup:'Back up all cards',restore:'Restore from backup',
+  markAchieved:'Achieved',printOne:'Print',del:'Delete',delConfirm:'Delete?',openCard:'Open card: {t}',
+  dueOn:'Deadline: {d}',daysLeft:'{n} days left',dayLeft:'1 day left',dueToday:'Due today',daysLate:'{n} days past the deadline',noDeadline:'No deadline',achievedOn:'Achieved on {d}',
+  untitled:'Untitled card',
+  toList:'← My cards',leaveConfirm:'Leave without saving?',saveCard:'Save card',cTitleEmpty:'Study goal',
+    labels:['Goal','Measure','Deadline','Why','Cost','Obstacles','First steps','Check'],
+  stepOf:'Step {n} of 8',stepAria:'Step {n}: {l}',
+  s1h:'What do you want to achieve?',s1i:'Give the card a short title, then write one goal. Make it specific enough that someone else would know exactly what you mean.',
+  titleL:'Card title',titlePh:'e.g. Biochemistry midterm',
+  vague:'Vague',vagueEx:'I want to get good grades.',clear:'Clear',clearEx:'I want to score at least 75 on my biochemistry midterm.',
+  goalL:'Your goal',goalPh:'I want to…',nameL:'Name',courseL:'Course or area',coursePh:'e.g. Biochemistry I',opt:'(optional)',
+  w1s:'Why be specific?',w1p:'Specific and challenging goals usually lead to better results than vague ones, because they tell you where to put your effort and when you have done enough (Locke &amp; Latham, 2002).',
+  s2h:'How will you know you made it?',s2i:'Choose something you can count or check, and the result that means success.',
+  measureL:'What will you count or check?',measurePh:'e.g. My midterm score',targetL:'What result means success?',targetPh:'e.g. 75 or higher',
+  w2s:'Why measure it?',w2p:'A number or a clear yes/no check lets you see your progress along the way, not only at the end.',
+  s3h:'By when?',s3i:'Set a realistic deadline, then split the road into up to three checkpoints.',
+  deadlineL:'Deadline',hoursL:'Time per week',hoursOpt:'(hours, optional)',msL:'Checkpoints',
+  msPh:['e.g. Finish chapters 1–4','e.g. Solve two past exams','e.g. Review all summaries'],msDate:'Checkpoint {n} date',msText:'Checkpoint {n}',
+  pastWarn:'This deadline is in the past.',afterWarn:'A checkpoint is after your deadline.',
+  s4h:'Why does it matter to you?',s4i:"Your own reason will carry you further than someone else's.",
+  whyL:'Why is this goal important to you?',outcomeL:'What will be better when you get there?',outcomePh:'Imagine the day you reach it. What is different?',
+  planL:'Which bigger plan does it serve?',planPh:'e.g. Passing the course and moving on to molecular biology',
+  w4s:'Why picture the outcome?',w4p:'Picturing the outcome you want is the first half of mental contrasting. The second half, thinking about what stands in the way, comes in step 6 (Oettingen, 2012).',
+  s5h:'What are you willing to give up?',s5i:'Every goal costs something: time, comfort or another activity. Decide now what you will trade for it.',
+  costL:'What will you do less of, or give up, for this goal?',costPh:'e.g. One evening of games a week',
+  s6h:'What could get in your way?',s6i:'Think of obstacles in you or your routine, such as tiredness, your phone or putting things off. For each one, decide what you will do when it happens.',
+  ifL:'If…',thenL:'…then I will',
+  ifPh:['e.g. I pick up my phone while studying','e.g. I feel too tired after class','e.g. I fail a practice test'],
+  thenPh:['e.g. put it in another room for 45 minutes','e.g. do 20 minutes, then decide','e.g. note what I missed and revise that part'],
+  w6s:'Why plan for obstacles?',w6p:'Deciding in advance "if this happens, then I will do that" makes the right action more automatic when the moment comes. Many studies found that such plans help people reach their goals (Gollwitzer &amp; Sheeran, 2006).',
+  s7h:'What are your first three steps?',s7i:'Small, concrete actions you can start this week. "Read chapter 3 and write a one-page summary" works better than "study".',
+  whenPh:'When? e.g. Mon 18:00',stepPh:'Step {n}',whenAria:'When for step {n}',
+  s8h:'Check your goal',s8i:'Tick each question you can honestly answer with yes. If you cannot, go back and change the goal. Then save the card.',
+  checks:[['Clear','Would someone else know exactly what you mean?'],['Measurable','Can you count or check whether you reached it?'],
+    ['Achievable','Is it challenging but within your reach with the time you have?'],['Relevant','Does it serve a plan that matters to you?'],
+    ['Time-bound','Does it have a realistic deadline?']],
+  gaps:['You have not written a goal yet (step 1).','Nothing to measure yet (step 2).','No deadline yet (step 3).','No complete if–then plan yet (step 6).','No first step yet (step 7).'],
+  print:'Print or save as PDF',reset:'Clear card',resetConfirm:'Click again to clear',
+  pdfHint:'To save a PDF, choose "Save as PDF" as the printer in the print window.',
+  back:'Back',next:'Next',storageFail:'This browser is not keeping your cards. Back them up before you close the page.',
+  yourCard:'Your card',whatPrints:'This is what prints',
+  cName:'Name ________________',cWritten:'Written {d}',cGoal:'My goal',cKnow:'I will know I made it when',cResult:'Result',
+  cDeadline:'Deadline and checkpoints',cHours:'{h} hours a week',cWhy:'Why it matters to me',cPart:'Part of: ',cWhen:'When I get there',
+  cGive:'What I will give up for it',cIfThen:'If–then plans',cIf:'If',cThen:'then I will',cSteps:'My first steps',cCheck:'My check',
+  cFootL:'Study Goal Planner, Desk &amp; Bench',cFootR:'Look at this card once a week.',cAchieved:'Achieved on {d}',
+  tSaved:'Card saved.',tDeleted:'Card deleted.',tCleared:'Card cleared.',tBackup:'Backup saved.',
+  tRestored:'Restored from the backup: {a} new, {u} updated.',tBad:'This file is not a Study Goal Planner backup.',tNoCards:'There are no cards to back up yet.',
+  months:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+  footL:'Study Goal Planner 1.0. Part of <a href="https://ugurlab.github.io/desk-and-bench/">Desk &amp; Bench</a>. MIT License.'
+},
+tr:{
+  version:'1.0',aboutBtn:'Yöntem hakkında',close:'Kapat',
+  langBtn:'English',langLabel:'Use English',
+  aboutTitle:'Bu adımlar neden var?',
+  aboutIntro:'Study Goal Planner her çalışma hedefini sekiz kısa adımda yazmanı sağlar. Her adım hedeflerle ilgili araştırmalardan ya da yaygın bir kontrol listesinden gelir:',
+  a1:'<strong>Net ve zorlayıcı hedefler.</strong> Pek çok çalışmada belirli ve zorlayıcı hedefler, "elimden geleni yapacağım" gibi belirsiz hedeflerden daha iyi performans sağladı (Locke &amp; Latham, 2002).',
+  a2:'<strong>Önce sonuç, sonra engel.</strong> İstediğin sonucu, ardından önündeki engeli düşünmek (zihinsel karşılaştırma, <em>mental contrasting</em>), istekleri kararlılığa dönüştürmenin bir yolu olarak araştırıldı (Oettingen, 2012).',
+  a3:'<strong>Eğer–o zaman planları.</strong> "Eğer bu olursa, o zaman şunu yapacağım" diye önceden karar vermek, insanların hedeflerine ulaşmasına yardımcı oldu; bir meta-analiz orta-büyük düzeyde bir etki buldu (Gollwitzer &amp; Sheeran, 2006).',
+  a4:'<strong>Son kontrol.</strong> 8. adımdaki beş soru SMART kontrol listesine dayanır. SMART, yönetim alanındaki bir yazıdan çıkmıştır (Doran, 1981); test edilmiş bir yöntemden çok kullanışlı bir hatırlatıcıdır.',
+  refs:'Kaynaklar',formLabel:'Hedefini yaz',previewLabel:'Kart önizlemesi',
+  homeTitle:'Çalışma hedeflerim',homeIntro:'Her hedef için bir kart. Değiştirmek için karta tıkla; hedefe ulaştığında işaretle.',
+  newCard:'Yeni kart',addSamples:'Örnek kartları ekle',sampleBadge:'Örnek',sampleNote:'"Örnek" işaretli kartlar bir kartın nasıl doldurulacağını gösterir. Her adımı görmek için aç; sonra tek tek ya da hepsini birden sil.',delSamples:'Örnek kartları sil',delSamplesConfirm:'Silmek için tekrar tıkla',tSamplesDeleted:'Örnek kartlar silindi.',tSamplesAdded:'Örnek kartlar eklendi.',inProgress:'Devam eden',achievedH:'Başarılan',
+  emptyText:'Henüz kartın yok. Yeni bir kart başlat ya da bir kartın nasıl doldurulduğunu görmek için örnek kartları ekle.',
+  storageNote:'Kartların yalnızca bu tarayıcıda saklanır. Arada bir yedek al.',
+  backup:'Tüm kartların yedeğini al',restore:'Yedekten yükle',
+  markAchieved:'Başardım',printOne:'Yazdır',del:'Sil',delConfirm:'Silinsin mi?',openCard:'Kartı aç: {t}',
+  dueOn:'Son tarih: {d}',daysLeft:'{n} gün kaldı',dayLeft:'1 gün kaldı',dueToday:'Bugün son gün',daysLate:'Son tarih {n} gün geçti',noDeadline:'Son tarih yok',achievedOn:'Başarıldı: {d}',
+  untitled:'Başlıksız kart',
+  toList:'← Kartlarım',leaveConfirm:'Kaydetmeden çıkılsın mı?',saveCard:'Kartı kaydet',cTitleEmpty:'Çalışma hedefi',
+    labels:['Hedef','Ölçüt','Süre','Neden','Bedel','Engeller','İlk adımlar','Kontrol'],
+  stepOf:'Adım {n} / 8',stepAria:'Adım {n}: {l}',
+  s1h:'Neyi başarmak istiyorsun?',s1i:'Karta kısa bir başlık ver, sonra tek bir hedef yaz. Başka biri okuduğunda ne demek istediğini tam olarak anlayacak kadar net olsun.',
+  titleL:'Kart başlığı',titlePh:'örn. Biyokimya vizesi',
+  vague:'Belirsiz',vagueEx:'İyi notlar almak istiyorum.',clear:'Net',clearEx:'Biyokimya vize sınavından en az 75 almak istiyorum.',
+  goalL:'Hedefin',goalPh:'Hedefini buraya yaz',nameL:'Adın',courseL:'Ders ya da alan',coursePh:'örn. Biyokimya I',opt:'(isteğe bağlı)',
+  w1s:'Neden net olmalı?',w1p:'Belirli ve zorlayıcı hedefler genellikle belirsiz hedeflerden daha iyi sonuç verir, çünkü emeğini nereye vereceğini ve ne zaman yeterince yaptığını gösterir (Locke &amp; Latham, 2002).',
+  s2h:'Başardığını nereden anlayacaksın?',s2i:'Sayabileceğin ya da kontrol edebileceğin bir şey seç ve başarı sayılacak sonucu yaz.',
+  measureL:'Neyi sayacak ya da kontrol edeceksin?',measurePh:'örn. Vize notum',targetL:'Hangi sonuç başarı sayılır?',targetPh:'örn. 75 ya da üstü',
+  w2s:'Neden ölçmeli?',w2p:'Bir sayı ya da açık bir evet/hayır kontrolü, ilerlemeni sadece sonda değil, yol boyunca görmeni sağlar.',
+  s3h:'Ne zamana kadar?',s3i:'Gerçekçi bir son tarih belirle, sonra yolu en fazla üç ara durağa böl.',
+  deadlineL:'Son tarih',hoursL:'Haftalık süre',hoursOpt:'(saat, isteğe bağlı)',msL:'Ara duraklar',
+  msPh:['örn. 1–4. bölümleri bitir','örn. İki çıkmış sınav çöz','örn. Tüm özetleri tekrar et'],msDate:'{n}. ara durağın tarihi',msText:'{n}. ara durak',
+  pastWarn:'Bu son tarih geçmişte kalmış.',afterWarn:'Bir ara durak son tarihten sonra.',
+  s4h:'Bu hedef neden önemli?',s4i:'Kendi nedenin seni başkasının nedeninden daha ileri taşır.',
+  whyL:'Bu hedef senin için neden önemli?',outcomeL:'Hedefine ulaştığında ne daha iyi olacak?',outcomePh:'Ulaştığın günü düşün. Ne farklı?',
+  planL:'Hangi büyük plana hizmet ediyor?',planPh:'örn. Dersi geçip moleküler biyolojiye devam etmek',
+  w4s:'Neden sonucu hayal etmeli?',w4p:'İstediğin sonucu hayal etmek zihinsel karşılaştırmanın ilk yarısıdır. İkinci yarısı, yani önündeki engeli düşünmek, 6. adımda gelir (Oettingen, 2012).',
+  s5h:'Neden vazgeçmeye hazırsın?',s5i:'Her hedefin bir bedeli vardır: zaman, rahatlık ya da başka bir uğraş. Karşılığında neyi vereceğine şimdi karar ver.',
+  costL:'Bu hedef için neyi daha az yapacaksın ya da neden vazgeçeceksin?',costPh:'örn. Haftada bir akşam oyun oynamak',
+  s6h:'Önüne ne çıkabilir?',s6i:'Kendinden ya da düzeninden kaynaklanan engelleri düşün: yorgunluk, telefon, işleri ertelemek gibi. Her biri için, o an geldiğinde ne yapacağına karar ver.',
+  ifL:'Eğer…',thenL:'…o zaman',
+  ifPh:['örn. Çalışırken telefonu elime alırsam','örn. Dersten sonra çok yorgun hissedersem','örn. Bir deneme sınavında düşük alırsam'],
+  thenPh:['örn. telefonu 45 dakika başka odaya bırakacağım','örn. 20 dakika çalışıp sonra karar vereceğim','örn. eksiklerimi not edip o kısmı tekrar edeceğim'],
+  w6s:'Engeller için neden plan yapmalı?',w6p:'Önceden "eğer bu olursa, o zaman şunu yapacağım" diye karar vermek, o an geldiğinde doğru davranışı daha otomatik hale getirir. Pek çok çalışma bu tür planların insanların hedeflerine ulaşmasına yardımcı olduğunu buldu (Gollwitzer &amp; Sheeran, 2006).',
+  s7h:'İlk üç adımın ne?',s7i:'Bu hafta başlayabileceğin küçük, somut işler. "3. bölümü oku ve bir sayfalık özet çıkar", "çalış" demekten daha işe yarar.',
+  whenPh:'Ne zaman? örn. Pzt 18:00',stepPh:'{n}. adım',whenAria:'{n}. adım ne zaman',
+  s8h:'Hedefini kontrol et',s8i:'Dürüstçe "evet" diyebildiğin her soruyu işaretle. Diyemiyorsan geri dön ve hedefini değiştir. Sonra kartı kaydet.',
+  checks:[['Net','Başka biri ne demek istediğini tam olarak anlar mı?'],['Ölçülebilir','Ulaşıp ulaşmadığını sayabilir ya da kontrol edebilir misin?'],
+    ['Ulaşılabilir','Elindeki zamanla zorlayıcı ama ulaşılabilir mi?'],['İlgili','Senin için önemli bir plana hizmet ediyor mu?'],
+    ['Zamanlı','Gerçekçi bir son tarihi var mı?']],
+  gaps:['Henüz bir hedef yazmadın (1. adım).','Henüz ölçülecek bir şey yok (2. adım).','Henüz bir son tarih yok (3. adım).','Henüz tamamlanmış bir eğer–o zaman planı yok (6. adım).','Henüz bir ilk adım yok (7. adım).'],
+  print:'Yazdır ya da PDF olarak kaydet',reset:'Kartı temizle',resetConfirm:'Silmek için tekrar tıkla',
+  pdfHint:'PDF kaydetmek için yazdırma penceresinde yazıcı olarak "PDF olarak kaydet"i seç.',
+  back:'Geri',next:'İleri',storageFail:'Bu tarayıcı kartlarını saklamıyor. Sayfayı kapatmadan önce yedek al.',
+  yourCard:'Kartın',whatPrints:'Yazdırılacak olan bu',
+  cName:'Ad ________________',cWritten:'Yazıldığı tarih: {d}',cGoal:'Hedefim',cKnow:'Başardığımı şuradan anlayacağım',cResult:'Sonuç',
+  cDeadline:'Son tarih ve ara duraklar',cHours:'haftada {h} saat',cWhy:'Benim için neden önemli',cPart:'Bağlı olduğu plan: ',cWhen:'Ulaştığımda',
+  cGive:'Bunun için vazgeçeceklerim',cIfThen:'Eğer–o zaman planlarım',cIf:'Eğer',cThen:'o zaman',cSteps:'İlk adımlarım',cCheck:'Kontrolüm',
+  cFootL:'Study Goal Planner, Desk &amp; Bench',cFootR:'Bu karta haftada bir bak.',cAchieved:'Başarıldı: {d}',
+  tSaved:'Kart kaydedildi.',tDeleted:'Kart silindi.',tCleared:'Kart temizlendi.',tBackup:'Yedek kaydedildi.',
+  tRestored:'Yedekten yüklendi: {a} yeni, {u} güncellenen kart.',tBad:'Bu bir Study Goal Planner yedeği değil.',tNoCards:'Yedeklenecek kart henüz yok.',
+  months:['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'],
+  footL:'Study Goal Planner 1.0. <a href="https://ugurlab.github.io/desk-and-bench/">Desk &amp; Bench</a> araçlarından biri. MIT Lisansı.'
+}};
+
+var KEY='studygoal.v2',LKEY='studygoal.lang',CK=['clear','measurable','achievable','relevant','timed'];
+var TEXT_FIELDS=['title','name','course','goal','measure','target','deadline','hours','why','outcome','plan','cost','created','updated','achievedAt'];
+var L;
+try{ L=localStorage.getItem(LKEY)||localStorage.getItem('goalcard.lang'); }catch(e){}
+if(L!=='en'&&L!=='tr') L=((navigator.language||'').toLowerCase().indexOf('tr')===0)?'tr':'en';
+function t(k,v){ var s=T[L][k]; if(v) Object.keys(v).forEach(function(x){ s=s.split('{'+x+'}').join(v[x]); }); return s; }
+var $=function(id){return document.getElementById(id);};
+
+/* ---------- data ---------- */
+function pad(n){return (n<10?'0':'')+n;}
+function iso(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+function today(){return iso(new Date());}
+function uid(){ return 'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+function blankCard(){
+  return {id:uid(),title:'',name:'',course:'',goal:'',measure:'',target:'',deadline:'',hours:'',
+    milestones:[{date:'',text:''},{date:'',text:''},{date:'',text:''}],
+    why:'',outcome:'',plan:'',cost:'',
+    obstacles:[{ifx:'',then:''},{ifx:'',then:''},{ifx:'',then:''}],
+    steps:[{text:'',when:''},{text:'',when:''},{text:'',when:''}],
+    checks:{},created:today(),updated:'',achieved:false,achievedAt:''};
+}
+function cleanCard(o){
+  var b=blankCard(); if(!o||typeof o!=='object') return b;
+  if(typeof o.id==='string'&&/^[A-Za-z0-9_-]{1,40}$/.test(o.id)) b.id=o.id;
+  TEXT_FIELDS.forEach(function(k){ if(o[k]!=null) b[k]=String(o[k]).slice(0,2000); });
+  ['milestones','obstacles','steps'].forEach(function(k){
+    if(Array.isArray(o[k])) for(var i=0;i<3;i++){ if(o[k][i]&&typeof o[k][i]==='object')
+      Object.keys(b[k][i]).forEach(function(f){ if(o[k][i][f]!=null) b[k][i][f]=String(o[k][i][f]).slice(0,500);});}});
+  if(o.checks&&typeof o.checks==='object') CK.forEach(function(c){ b.checks[c]=!!o.checks[c];});
+  b.achieved=!!o.achieved;
+  if(o.sample){ b.sample=true; b.sampleKey=Math.max(0,Math.min(5,parseInt(o.sampleKey,10)||0)); }
+  return b;
+}
+function hasContent(c){ return !!(c.title.trim()||c.goal.trim()||c.why.trim()||c.measure.trim()||c.steps.some(function(x){return x.text.trim();})); }
+
+/* ---------- example cards (shown on first use) ---------- */
+/* d: deadline in days from the day the examples were added; ms: checkpoints [days, text]; ach: achieved on day (or null) */
+var SAMPLES={
+en:[
+ {title:'Biochemistry midterm',course:'Biochemistry I',goal:'I want to score at least 75 on my biochemistry midterm.',
+  measure:'My midterm score',target:'75 or higher',d:18,hours:'6',ms:[[5,'Finish summaries of chapters 1–4'],[11,'Solve two past exams under time'],[16,'Review weak topics from the past exams']],
+  why:'I lost points last year because I studied only the night before. I want to prove to myself I can plan ahead.',
+  outcome:'I walk into the exam calm, and I understand metabolism well enough for next term.',plan:'Passing the course and moving on to molecular biology',
+  cost:'Two evenings of games a week until the exam.',
+  ob:[['I pick up my phone while studying','put it in another room for 45 minutes'],['I feel too tired after class','do 20 minutes, then decide whether to go on'],['I score low on a past exam','list the questions I missed and revise those topics first']],
+  st:[['Make a one-page plan of the chapters','Mon 18:00'],['Read chapter 1 and write a summary','Tue 19:00'],['Ask the instructor for past exams','Wed, after class']],ach:null},
+ {title:'Organic chemistry lab reports',course:'Organic Chemistry Lab',goal:'I want to hand in each of my remaining four lab reports within three days of the experiment.',
+  measure:'Reports handed in on time',target:'4 of 4',d:35,hours:'3',ms:[[7,'Report 1 handed in'],[14,'Report 2 handed in'],[28,'Report 3 handed in']],
+  why:'Last term I lost marks for late reports, not for wrong results.',
+  outcome:'I finish the term with no late penalty, and I write each report while the experiment is fresh in my mind.',plan:'A good lab grade on my transcript',
+  cost:'Going out on lab evenings.',
+  ob:[['I feel tired after the lab','write only the methods section that evening and the rest the next day'],['I do not understand a result','ask the assistant in the next office hour instead of waiting']],
+  st:[['Make a report template with all the headings','Sun 20:00'],['Put my raw data from experiment 5 in one table','Mon 17:00'],['Book a library seat for Wednesday','Tue']],ach:null},
+ {title:'Reading scientific English',course:'English for science',goal:'Each week I want to read one research article in my field and write a half-page summary in my own words.',
+  measure:'Summaries written',target:'8 summaries',d:60,hours:'2',ms:[[14,'2 summaries'],[35,'5 summaries'],[55,'8 summaries']],
+  why:'I will need English articles for my thesis, and now one article takes me hours.',
+  outcome:'I can read an article in under an hour and explain its main result.',plan:'Preparing for my graduation thesis',
+  cost:'One series episode a week.',
+  ob:[['I meet too many unknown words','mark them and look up only the ones that come back'],['I skip a week','read one short article the next week instead of two']],
+  st:[['Ask my advisor for three starter articles','Mon'],['Read the abstract and figures of the first article','Wed 21:00'],['Write my first summary','Sat 11:00']],ach:null},
+ {title:'Microbiology term paper',course:'General Microbiology',goal:'I want to finish my 10-page term paper on antibiotic resistance, with at least eight references.',
+  measure:'Finished pages and references',target:'10 pages, 8 references',d:-3,hours:'5',ms:[[-25,'Outline approved'],[-15,'First 5 pages written'],[-7,'Full draft ready']],
+  why:'It is a topic I want to work on in my master\'s.',
+  outcome:'I have a paper I would be proud to show in an interview.',plan:'Applying to a master\'s programme in microbiology',
+  cost:'Weekend trips home this month.',
+  ob:[['I cannot find good sources','ask the librarian how to search the databases'],['I keep rewriting the first page','write the whole draft first and edit at the end']],
+  st:[['Write the outline','Mon'],['Find eight articles','Wed'],['Write the introduction','Fri']],ach:null},
+ {title:'Cell biology quiz',course:'Cell Biology',goal:'I want to score at least 80 on the cell membrane quiz.',
+  measure:'My quiz score',target:'80 or higher',d:-20,hours:'4',ms:[[-27,'Read the membrane chapter'],[-24,'Make flash cards'],[-22,'Solve the end-of-chapter questions']],
+  why:'I failed the first quiz and I want to catch up.',
+  outcome:'I start the next topic with confidence.',plan:'Passing Cell Biology',
+  cost:'Two evenings of games.',
+  ob:[['I forget the types of membrane transport','go through my flash cards on the bus']],
+  st:[['Read the chapter once quickly','Mon'],['Make 30 flash cards','Tue'],['Quiz myself with a friend','Thu']],ach:-21},
+ {title:'Python basics course',course:'Introduction to bioinformatics',goal:'I want to finish all 12 modules of an online Python basics course.',
+  measure:'Modules finished',target:'12 of 12',d:-8,hours:'4',ms:[[-40,'Modules 1–4'],[-25,'Modules 5–8'],[-10,'Modules 9–12']],
+  why:'Next year\'s bioinformatics courses expect basic Python.',
+  outcome:'I can write a short script to sort my own data.',plan:'Taking bioinformatics electives',
+  cost:'Social media in the evenings.',
+  ob:[['I get stuck on an exercise','read the hint, move on, and come back the next day'],['I miss two days in a row','do one short lesson on the third day, whatever happens']],
+  st:[['Install Python and an editor','Sat'],['Finish module 1','Sun'],['Put the modules in my calendar','Sun evening']],ach:-9}
+],
+tr:[
+ {title:'Biyokimya vizesi',course:'Biyokimya I',goal:'Biyokimya vize sınavından en az 75 almak istiyorum.',
+  measure:'Vize notum',target:'75 ya da üstü',d:18,hours:'6',ms:[[5,'1–4. bölümlerin özetlerini bitir'],[11,'Süre tutarak iki çıkmış sınav çöz'],[16,'Çıkmış sınavlarda zayıf olduğum konuları tekrar et']],
+  why:'Geçen yıl sadece sınavdan önceki gece çalıştığım için puan kaybettim. Önceden plan yapabildiğimi kendime göstermek istiyorum.',
+  outcome:'Sınava sakin giriyorum ve metabolizmayı gelecek dönem için yeterince iyi anlıyorum.',plan:'Dersi geçip moleküler biyolojiye devam etmek',
+  cost:'Sınava kadar haftada iki akşam oyun oynamak.',
+  ob:[['çalışırken telefonu elime alırsam','telefonu 45 dakika başka odaya bırakacağım'],['dersten sonra çok yorgun hissedersem','20 dakika çalışıp devam edip etmeyeceğime sonra karar vereceğim'],['bir çıkmış sınavda düşük alırsam','yanlış yaptığım soruları listeleyip önce o konuları tekrar edeceğim']],
+  st:[['Bölümlerin bir sayfalık planını çıkar','Pzt 18:00'],['1. bölümü oku ve özet yaz','Sal 19:00'],['Hocadan çıkmış sınavları iste','Çar, dersten sonra']],ach:null},
+ {title:'Organik kimya lab raporları',course:'Organik Kimya Laboratuvarı',goal:'Kalan dört laboratuvar raporunu her deneyden sonraki üç gün içinde teslim etmek istiyorum.',
+  measure:'Zamanında teslim edilen rapor',target:'4 / 4',d:35,hours:'3',ms:[[7,'1. rapor teslim edildi'],[14,'2. rapor teslim edildi'],[28,'3. rapor teslim edildi']],
+  why:'Geçen dönem yanlış sonuç yüzünden değil, geç teslim yüzünden puan kaybettim.',
+  outcome:'Dönemi gecikme cezası almadan bitiriyorum ve her raporu deney aklımdayken yazıyorum.',plan:'Transkriptimde iyi bir laboratuvar notu',
+  cost:'Laboratuvar akşamlarında dışarı çıkmak.',
+  ob:[['laboratuvardan sonra yorgun olursam','o akşam sadece yöntem kısmını yazıp gerisini ertesi gün yazacağım'],['bir sonucu anlamazsam','beklemeden ilk görüşme saatinde asistana soracağım']],
+  st:[['Tüm başlıklarıyla bir rapor şablonu hazırla','Paz 20:00'],['5. deneyin ham verilerini tek tabloya koy','Pzt 17:00'],['Çarşamba için kütüphanede yer ayırt','Sal']],ach:null},
+ {title:'Bilimsel İngilizce okuma',course:'Bilim için İngilizce',goal:'Her hafta alanımda bir araştırma makalesi okuyup kendi cümlelerimle yarım sayfalık özet yazmak istiyorum.',
+  measure:'Yazılan özet sayısı',target:'8 özet',d:60,hours:'2',ms:[[14,'2 özet'],[35,'5 özet'],[55,'8 özet']],
+  why:'Bitirme tezim için İngilizce makale okumam gerekecek; şu an bir makale saatlerimi alıyor.',
+  outcome:'Bir makaleyi bir saatten kısa sürede okuyup ana sonucunu anlatabiliyorum.',plan:'Bitirme tezine hazırlanmak',
+  cost:'Haftada bir dizi bölümü.',
+  ob:[['çok fazla bilmediğim kelime çıkarsa','işaretleyip sadece tekrar edenlere bakacağım'],['bir haftayı atlarsam','ertesi hafta iki yerine bir kısa makale okuyacağım']],
+  st:[['Danışmanımdan başlangıç için üç makale iste','Pzt'],['İlk makalenin özetini ve şekillerini oku','Çar 21:00'],['İlk özetimi yaz','Cmt 11:00']],ach:null},
+ {title:'Mikrobiyoloji dönem ödevi',course:'Genel Mikrobiyoloji',goal:'Antibiyotik direnci üzerine 10 sayfalık dönem ödevimi en az sekiz kaynakla bitirmek istiyorum.',
+  measure:'Biten sayfa ve kaynak sayısı',target:'10 sayfa, 8 kaynak',d:-3,hours:'5',ms:[[-25,'Taslak plan onaylandı'],[-15,'İlk 5 sayfa yazıldı'],[-7,'Tam taslak hazır']],
+  why:'Yüksek lisansta çalışmak istediğim bir konu.',
+  outcome:'Bir mülakatta gururla gösterebileceğim bir ödevim oluyor.',plan:'Mikrobiyoloji yüksek lisansına başvurmak',
+  cost:'Bu ay hafta sonu eve gitmek.',
+  ob:[['iyi kaynak bulamazsam','kütüphaneciye veri tabanlarında nasıl arama yapılacağını soracağım'],['ilk sayfayı tekrar tekrar yazarsam','önce bütün taslağı yazıp en sonda düzelteceğim']],
+  st:[['Ödevin planını yaz','Pzt'],['Sekiz makale bul','Çar'],['Girişi yaz','Cum']],ach:null},
+ {title:'Hücre biyolojisi quizi',course:'Hücre Biyolojisi',goal:'Hücre zarı quizinden en az 80 almak istiyorum.',
+  measure:'Quiz notum',target:'80 ya da üstü',d:-20,hours:'4',ms:[[-27,'Hücre zarı bölümünü oku'],[-24,'Bilgi kartları hazırla'],[-22,'Bölüm sonu sorularını çöz']],
+  why:'İlk quizden kaldım ve açığı kapatmak istiyorum.',
+  outcome:'Bir sonraki konuya kendime güvenerek başlıyorum.',plan:'Hücre Biyolojisi dersini geçmek',
+  cost:'İki akşam oyun oynamak.',
+  ob:[['zar taşıma türlerini unutursam','otobüste bilgi kartlarımın üzerinden geçeceğim']],
+  st:[['Bölümü bir kez hızlıca oku','Pzt'],['30 bilgi kartı hazırla','Sal'],['Bir arkadaşla birbirimizi sına','Per']],ach:-21},
+ {title:'Python temel kursu',course:'Biyoinformatiğe giriş',goal:'Çevrimiçi bir Python temel kursunun 12 modülünün hepsini bitirmek istiyorum.',
+  measure:'Biten modül',target:'12 / 12',d:-8,hours:'4',ms:[[-40,'1–4. modüller'],[-25,'5–8. modüller'],[-10,'9–12. modüller']],
+  why:'Gelecek yılın biyoinformatik dersleri temel Python bilgisi istiyor.',
+  outcome:'Kendi verilerimi sıralayan kısa bir program yazabiliyorum.',plan:'Biyoinformatik seçmeli derslerini almak',
+  cost:'Akşamları sosyal medya.',
+  ob:[['bir alıştırmada takılırsam','ipucunu okuyup devam edeceğim ve ertesi gün geri döneceğim'],['iki gün üst üste ara verirsem','üçüncü gün ne olursa olsun kısa bir ders yapacağım']],
+  st:[['Python ve bir editör kur','Cmt'],['1. modülü bitir','Paz'],['Modülleri takvimime yerleştir','Paz akşam']],ach:-9}
+]};
+function addDays(base,k){ var x=new Date(base+'T00:00:00'); x.setDate(x.getDate()+k); return iso(x); }
+function sampleCard(i,lang,base,keep){
+  var s=SAMPLES[lang][i];
+  var c=cleanCard({id:'sample-'+(i+1),title:s.title,name:'',course:s.course,goal:s.goal,measure:s.measure,target:s.target,
+    deadline:addDays(base,s.d),hours:s.hours,
+    milestones:s.ms.map(function(m){return {date:addDays(base,m[0]),text:m[1]};}),
+    why:s.why,outcome:s.outcome,plan:s.plan,cost:s.cost,
+    obstacles:s.ob.map(function(x){return {ifx:x[0],then:x[1]};}),
+    steps:s.st.map(function(x){return {text:x[0],when:x[1]};}),
+    checks:{clear:true,measurable:true,achievable:true,relevant:true,timed:true},
+    created:addDays(base,Math.min(-30,s.d-30)),updated:base,
+    achieved:s.ach!==null,achievedAt:s.ach!==null?addDays(base,s.ach):''});
+  c.sample=true; c.sampleKey=i;
+  if(keep){ c.achieved=keep.achieved; c.achievedAt=keep.achievedAt; }
+  return c;
+}
+function sampleSet(lang,base){ return SAMPLES[lang].map(function(_,i){ return sampleCard(i,lang,base); }); }
+
+var DB={cards:[],sampleBase:''},ED=null;   /* ED: {card, step, isNew, saved:jsonString} */
+function load(){
+  var raw=null; try{ raw=JSON.parse(localStorage.getItem(KEY)); }catch(e){}
+  if(raw&&Array.isArray(raw.cards)){
+    DB.cards=raw.cards.map(cleanCard); DB.sampleBase=String(raw.sampleBase||today());
+    if(raw.ed&&raw.ed.card) ED={card:cleanCard(raw.ed.card),step:Math.min(8,Math.max(1,+raw.ed.step||1)),isNew:!!raw.ed.isNew,saved:String(raw.ed.saved||'')};
+    return;
+  }
+  /* move a card from version 0.1 */
+  var old=null; try{ old=JSON.parse(localStorage.getItem('studygoal.v1')||localStorage.getItem('goalcard.v1')); }catch(e){}
+  if(old&&!old.example){ var c=cleanCard(old); if(hasContent(c)){ c.updated=today(); DB.cards.push(c); } }
+  /* first use: add the example cards */
+  DB.sampleBase=today(); DB.cards=DB.cards.concat(sampleSet(L,DB.sampleBase));
+}
+var storageOk=true;
+function persist(){
+  try{ localStorage.setItem(KEY,JSON.stringify({v:2,cards:DB.cards,sampleBase:DB.sampleBase,ed:ED})); }
+  catch(e){ if(storageOk){ storageOk=false; toast(t('storageFail')); } }
+}
+
+/* ---------- helpers ---------- */
+function esc(x){return String(x).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function fmt(d){ if(!d) return ''; var p=d.split('-'); if(p.length!==3||!T[L].months[+p[1]-1]) return d; return (+p[2])+' '+T[L].months[+p[1]-1]+' '+p[0]; }
+function daysTo(d){ if(!d) return null; return Math.round((new Date(d+'T00:00:00')-new Date(today()+'T00:00:00'))/864e5); }
+function titleOf(c){ return c.title.trim()||(c.goal.trim()?c.goal.trim().slice(0,60):t('untitled')); }
+function toast(x){ var m=$('msg'); m.textContent=x; m.classList.add('on'); clearTimeout(toast.h); toast.h=setTimeout(function(){m.classList.remove('on');},2800); }
+function confirm2(btn,armedText,fn,restore){
+  if(!btn.dataset.armed){ btn.dataset.armed='1'; btn.classList.add('armed'); var old=btn.textContent; btn.textContent=armedText;
+    btn._t=setTimeout(function(){ delete btn.dataset.armed; btn.classList.remove('armed'); btn.textContent=restore?restore():old; },4000); return; }
+  clearTimeout(btn._t); delete btn.dataset.armed; btn.classList.remove('armed'); fn(); if(restore) btn.textContent=restore();
+}
+
+/* ---------- card rendering (preview and print) ---------- */
+function txt(v,lines){ v=(v||'').trim(); if(v) return '<div class="c-text">'+esc(v)+'</div>';
+  var h=''; for(var i=0;i<(lines||1);i++) h+='<span class="blank"></span>'; return h; }
+function cardHTML(c){
+  var h='<div class="c-head"><p class="c-title">'+esc(c.title.trim()||(c.goal.trim()?titleOf(c):t('cTitleEmpty')))+'</p><div class="c-meta">';
+  h+='<div>'+(c.name.trim()?esc(c.name):esc(t('cName')))+'</div>';
+  h+='<div>'+(c.course.trim()?esc(c.course):'')+'</div>';
+  h+='<div>'+esc(t('cWritten',{d:fmt(c.created)}))+'</div>';
+  if(c.achieved) h+='<div><strong>'+esc(t('cAchieved',{d:fmt(c.achievedAt)}))+'</strong></div>';
+  h+='</div></div>';
+  h+='<div class="c-goal"><p class="c-label">'+esc(t('cGoal'))+'</p>'+txt(c.goal,2)+'</div>';
+  h+='<div class="c-grid">';
+  h+='<div class="c-box"><p class="c-label">'+esc(t('cKnow'))+'</p>'+
+     ((c.measure.trim()||c.target.trim())?'<div class="c-text">'+esc(c.measure.trim()||t('cResult'))+(c.target.trim()?': <strong>'+esc(c.target)+'</strong>':'')+'</div>':txt('',2))+'</div>';
+  var dl=c.deadline?'<div class="c-text"><strong>'+esc(fmt(c.deadline))+'</strong>'+(c.hours?', '+esc(t('cHours',{h:c.hours})):'')+'</div>':txt('',1);
+  var ms=c.milestones.filter(function(x){return x.text.trim()||x.date;}).slice();
+  ms.sort(function(a,b){return (a.date||'9')<(b.date||'9')?-1:1;});
+  var ml=ms.length?'<ul class="c-list">'+ms.map(function(x){return '<li><span class="d">'+esc(fmt(x.date)||'—')+'</span><span>'+esc(x.text)+'</span></li>';}).join('')+'</ul>':'';
+  h+='<div class="c-box"><p class="c-label">'+esc(t('cDeadline'))+'</p>'+dl+ml+'</div>';
+  h+='<div class="c-box"><p class="c-label">'+esc(t('cWhy'))+'</p>'+txt(c.why,2)+
+     (c.plan.trim()?'<div class="c-text c-part">'+esc(t('cPart')+c.plan)+'</div>':'')+'</div>';
+  h+='<div class="c-box"><p class="c-label">'+esc(t('cWhen'))+'</p>'+txt(c.outcome,2)+'</div>';
+  h+='<div class="c-box full"><p class="c-label">'+esc(t('cGive'))+'</p>'+txt(c.cost,1)+'</div>';
+  var ob=c.obstacles.filter(function(x){return x.ifx.trim()||x.then.trim();});
+  h+='<div class="c-box full"><p class="c-label">'+esc(t('cIfThen'))+'</p>'+(ob.length?'<ul class="c-list c-ifthen">'+ob.map(function(x){
+      return '<li><span><b>'+esc(t('cIf'))+'</b>'+esc(x.ifx)+'</span><span><b>'+esc(t('cThen'))+'</b>'+esc(x.then)+'</span></li>';}).join('')+'</ul>':txt('',3))+'</div>';
+  var st=c.steps.filter(function(x){return x.text.trim()||x.when.trim();});
+  h+='<div class="c-box full"><p class="c-label">'+esc(t('cSteps'))+'</p>'+(st.length?'<ul class="c-list c-steps">'+st.map(function(x){
+      return '<li><span class="bx"></span><span>'+esc(x.text)+'</span><span class="d">'+esc(x.when)+'</span></li>';}).join('')+'</ul>':txt('',3))+'</div>';
+  h+='<div class="c-box full"><p class="c-label">'+esc(t('cCheck'))+'</p><div class="c-checks">'+CK.map(function(k,j){
+      return '<span class="'+(c.checks[k]?'y':'')+'"><i></i>'+esc(T[L].checks[j][0])+'</span>';}).join('')+'</div></div>';
+  h+='</div><div class="c-foot"><span>'+t('cFootL')+'</span><span>'+esc(t('cFootR'))+'</span></div>';
+  return h;
+}
+function printCard(c){ $('printCard').innerHTML=cardHTML(c); window.print(); }
+
+/* ---------- home ---------- */
+function dueText(c){
+  if(c.achieved) return ['ok',t('achievedOn',{d:fmt(c.achievedAt)})];
+  var n=daysTo(c.deadline);
+  if(n===null) return ['',t('noDeadline')];
+  var a=t('dueOn',{d:fmt(c.deadline)});
+  if(n<0) return ['late',a+'. '+t('daysLate',{n:-n})];
+  if(n===0) return ['late',a+'. '+t('dueToday')];
+  return ['',a+'. '+(n===1?t('dayLeft'):t('daysLeft',{n:n}))];
+}
+function tileHTML(c){
+  var d=dueText(c);
+  return '<li class="tile'+(c.achieved?' done':'')+'" data-id="'+esc(c.id)+'">'+
+    '<button class="tile-open" type="button" data-act="open" aria-label="'+esc(t('openCard',{t:titleOf(c)}))+'">'+
+      '<p class="tile-title">'+esc(titleOf(c))+(c.sample?' <span class="badge">'+esc(t('sampleBadge'))+'</span>':'')+'</p>'+
+      (c.course.trim()?'<p class="tile-course">'+esc(c.course)+'</p>':'')+
+      (c.goal.trim()&&c.title.trim()?'<p class="tile-goal">'+esc(c.goal)+'</p>':'')+
+      '<p class="tile-due '+d[0]+'">'+esc(d[1])+'</p>'+
+    '</button>'+
+    '<div class="tile-bar">'+
+      '<button class="mini achv" type="button" data-act="achv" aria-pressed="'+(c.achieved?'true':'false')+'"><i></i>'+esc(t('markAchieved'))+'</button>'+
+      '<span class="sp"></span>'+
+      '<button class="mini" type="button" data-act="print">'+esc(t('printOne'))+'</button>'+
+      '<button class="mini del" type="button" data-act="del">'+esc(t('del'))+'</button>'+
+    '</div></li>';
+}
+function renderList(){
+  var open=DB.cards.filter(function(c){return !c.achieved;}),done=DB.cards.filter(function(c){return c.achieved;});
+  open.sort(function(a,b){ return (a.deadline||'9999')<(b.deadline||'9999')?-1:(a.deadline||'9999')>(b.deadline||'9999')?1:0; });
+  done.sort(function(a,b){ return (b.achievedAt||'')<(a.achievedAt||'')?-1:1; });
+  var h='';
+  if(!DB.cards.length) h='<div class="empty"><p>'+esc(t('emptyText'))+'</p></div>';
+  else{
+    if(open.length) h+='<h2 class="group-h">'+esc(t('inProgress'))+' <span>'+open.length+'</span></h2><ul class="tiles">'+open.map(tileHTML).join('')+'</ul>';
+    if(done.length) h+='<h2 class="group-h">'+esc(t('achievedH'))+' <span>'+done.length+'</span></h2><ul class="tiles">'+done.map(tileHTML).join('')+'</ul>';
+  }
+  $('list').innerHTML=h;
+  var hasS=DB.cards.some(function(c){return c.sample;});
+  $('sampleNote').hidden=!hasS; $('exampleBtn').hidden=hasS;
+}
+$('list').addEventListener('click',function(e){
+  var b=e.target.closest('[data-act]'); if(!b) return;
+  var id=b.closest('.tile').getAttribute('data-id'),c=DB.cards.filter(function(x){return x.id===id;})[0]; if(!c) return;
+  var act=b.getAttribute('data-act');
+  if(act==='open') openEditor(c,false);
+  else if(act==='achv'){ c.achieved=!c.achieved; c.achievedAt=c.achieved?today():''; persist(); renderList();
+    var nb=document.querySelector('.tile[data-id="'+id+'"] [data-act="achv"]'); if(nb) nb.focus(); }
+  else if(act==='print') printCard(c);
+  else if(act==='del') confirm2(b,t('delConfirm'),function(){ DB.cards=DB.cards.filter(function(x){return x.id!==id;}); persist(); renderList(); toast(t('tDeleted')); });
+});
+
+/* ---------- views ---------- */
+function show(view){
+  $('home').classList.toggle('on',view==='home'); $('editor').classList.toggle('on',view==='editor');
+  window.scrollTo(0,0);
+}
+function goHome(){ ED=null; persist(); renderList(); show('home'); }
+
+/* ---------- editor ---------- */
+var stepEls=[].slice.call(document.querySelectorAll('.step'));
+function openEditor(card,isNew){
+  var c=cleanCard(JSON.parse(JSON.stringify(card)));
+  ED={card:c,step:1,isNew:isNew,saved:JSON.stringify(c)};
+  persist(); showEditor(); go(1,true);
+}
+function showEditor(){
+  buildRows(); fillInputs(); renderEditor(); edButtons(); show('editor');
+}
+function edButtons(){ $('toListBtn').textContent=t('toList'); $('saveTopBtn').className='btn dark'; }
+function dirty(){ return ED&&JSON.stringify(ED.card)!==ED.saved; }
+function buildRows(){
+  var h='',i;
+  for(i=0;i<3;i++){
+    h+='<div class="r"><input type="date" aria-label="'+esc(t('msDate',{n:i+1}))+'" data-a="milestones" data-i="'+i+'" data-f="date">'+
+       '<input type="text" aria-label="'+esc(t('msText',{n:i+1}))+'" placeholder="'+esc(T[L].msPh[i])+'" data-a="milestones" data-i="'+i+'" data-f="text"></div>';
+  }
+  $('milestones').innerHTML=h; h='';
+  for(i=0;i<3;i++){
+    h+='<div class="r ifthen"><div><label class="tag" for="if'+i+'">'+esc(t('ifL'))+'</label><input type="text" id="if'+i+'" placeholder="'+esc(T[L].ifPh[i])+'" data-a="obstacles" data-i="'+i+'" data-f="ifx"></div>'+
+       '<div><label class="tag" for="th'+i+'">'+esc(t('thenL'))+'</label><input type="text" id="th'+i+'" placeholder="'+esc(T[L].thenPh[i])+'" data-a="obstacles" data-i="'+i+'" data-f="then"></div></div>';
+  }
+  $('obstacles').innerHTML=h; h='';
+  for(i=0;i<3;i++){
+    h+='<div class="r"><input type="text" aria-label="'+esc(t('whenAria',{n:i+1}))+'" placeholder="'+esc(t('whenPh'))+'" data-a="steps" data-i="'+i+'" data-f="when">'+
+       '<input type="text" aria-label="'+esc(t('stepPh',{n:i+1}))+'" placeholder="'+esc(t('stepPh',{n:i+1}))+'" data-a="steps" data-i="'+i+'" data-f="text"></div>';
+  }
+  $('steps').innerHTML=h; h='';
+  CK.forEach(function(k,j){
+    h+='<li><label><input type="checkbox" data-c="'+k+'"><div><strong>'+esc(T[L].checks[j][0])+'</strong><span>'+esc(T[L].checks[j][1])+'</span></div></label></li>';
+  });
+  $('checks').innerHTML=h;
+}
+function fillInputs(){
+  if(!ED) return; var c=ED.card;
+  document.querySelectorAll('[data-k]').forEach(function(el){ el.value=c[el.getAttribute('data-k')]||''; });
+  document.querySelectorAll('[data-a]').forEach(function(el){ el.value=c[el.getAttribute('data-a')][+el.getAttribute('data-i')][el.getAttribute('data-f')]||''; });
+  document.querySelectorAll('[data-c]').forEach(function(el){ el.checked=!!c.checks[el.getAttribute('data-c')]; });
+}
+document.addEventListener('input',function(e){
+  if(!ED) return; var el=e.target,c=ED.card;
+  if(el.hasAttribute('data-k')) c[el.getAttribute('data-k')]=el.value;
+  else if(el.hasAttribute('data-a')) c[el.getAttribute('data-a')][+el.getAttribute('data-i')][el.getAttribute('data-f')]=el.value;
+  else return;
+  persist(); renderEditor();
+});
+document.addEventListener('change',function(e){
+  var el=e.target;
+  if(ED&&el.hasAttribute('data-c')){ ED.card.checks[el.getAttribute('data-c')]=el.checked; persist(); renderEditor(); }
+});
+function renderEditor(){
+  if(!ED) return; var c=ED.card;
+  $('card').innerHTML=cardHTML(c);
+  var w=$('dateWarn'),d=daysTo(c.deadline);
+  if(d!==null&&d<0&&!c.achieved){ w.hidden=false; w.textContent=t('pastWarn'); }
+  else if(c.deadline&&c.milestones.some(function(x){return x.date&&x.date>c.deadline;})){ w.hidden=false; w.textContent=t('afterWarn'); }
+  else w.hidden=true;
+  var g=[],G=T[L].gaps;
+  if(!c.goal.trim()) g.push(G[0]);
+  if(!c.measure.trim()&&!c.target.trim()) g.push(G[1]);
+  if(!c.deadline) g.push(G[2]);
+  if(!c.obstacles.some(function(x){return x.ifx.trim()&&x.then.trim();})) g.push(G[3]);
+  if(!c.steps.some(function(x){return x.text.trim();})) g.push(G[4]);
+  $('gaps').innerHTML=g.map(function(x){return '<p class="warn">'+esc(x)+'</p>';}).join('');
+}
+function pills(){
+  var h='';
+  T[L].labels.forEach(function(l,i){
+    var n=i+1,cls=n===ED.step?'current':(n<ED.step?'done':'');
+    h+='<li class="'+cls+'"><button type="button" data-go="'+n+'" aria-label="'+esc(t('stepAria',{n:n,l:l}))+'"'+(n===ED.step?' aria-current="step"':'')+'><span class="bar"></span><span class="lbl">'+esc(l)+'</span></button></li>';
+  });
+  $('pills').innerHTML=h;
+}
+function go(n,focus){
+  if(!ED) return;
+  ED.step=Math.max(1,Math.min(8,n)); persist();
+  stepEls.forEach(function(s,i){ s.classList.toggle('on',i+1===ED.step); });
+  $('prevBtn').disabled=ED.step===1;
+  $('nextBtn').style.visibility=ED.step===8?'hidden':'visible';
+  pills();
+  if(focus){ var hd=stepEls[ED.step-1].querySelector('h2'); hd.setAttribute('tabindex','-1'); hd.focus({preventScroll:true});
+    var p=$('pills'); if(p.getBoundingClientRect().top<0) p.scrollIntoView({block:'start'}); }
+}
+$('pills').addEventListener('click',function(e){ var b=e.target.closest('[data-go]'); if(b) go(+b.getAttribute('data-go'),true); });
+$('prevBtn').onclick=function(){ go(ED.step-1,true); };
+$('nextBtn').onclick=function(){ go(ED.step+1,true); };
+$('resetBtn').onclick=function(){ var b=this; confirm2(b,t('resetConfirm'),function(){
+  var keep=ED.card; var c=blankCard(); c.id=keep.id; c.created=keep.created; ED.card=c;
+  b.textContent=t('reset'); persist(); fillInputs(); renderEditor(); go(1,true); toast(t('tCleared')); },function(){return t('reset');}); };
+function saveCard(){
+  if(!ED) return;
+  var c=ED.card; if(c.sample&&dirty()){ delete c.sample; delete c.sampleKey; } c.updated=today();
+  var i=DB.cards.map(function(x){return x.id;}).indexOf(c.id);
+  if(i>=0) DB.cards[i]=c; else DB.cards.push(c);
+  goHome(); toast(t('tSaved'));
+}
+$('saveBtn').onclick=saveCard;
+$('saveTopBtn').onclick=saveCard;
+$('toListBtn').onclick=function(){
+  var b=this;
+  if(dirty()) confirm2(b,t('leaveConfirm'),goHome,function(){return t('toList');});
+  else goHome();
+};
+$('printBtn').onclick=function(){ printCard(ED.card); };
+
+/* ---------- home actions ---------- */
+$('newBtn').onclick=function(){ openEditor(blankCard(),true); };
+$('exampleBtn').onclick=function(){
+  DB.sampleBase=today(); DB.cards=DB.cards.filter(function(c){return !c.sample;}).concat(sampleSet(L,DB.sampleBase));
+  persist(); renderList(); toast(t('tSamplesAdded'));
+};
+$('delSamplesBtn').onclick=function(){ confirm2(this,t('delSamplesConfirm'),function(){
+  DB.cards=DB.cards.filter(function(c){return !c.sample;}); persist(); renderList(); toast(t('tSamplesDeleted')); },function(){return t('delSamples');}); };
+$('backupBtn').onclick=function(){
+  if(!DB.cards.length){ toast(t('tNoCards')); return; }
+  var blob=new Blob([JSON.stringify({app:'Study Goal Planner',type:'backup',version:'1.0',exported:new Date().toISOString(),cards:DB.cards},null,2)],{type:'application/json'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='study-goals-backup-'+today()+'.json';
+  document.body.appendChild(a); a.click(); setTimeout(function(){URL.revokeObjectURL(a.href); a.remove();},500); toast(t('tBackup'));
+};
+$('restoreBtn').onclick=function(){ $('fileIn').value=''; $('fileIn').click(); };
+$('fileIn').onchange=function(){
+  var f=this.files[0]; if(!f) return; var r=new FileReader();
+  r.onload=function(){
+    var o; try{ o=JSON.parse(r.result); }catch(e){ o=null; }
+    var list=null;
+    if(o&&(o.app==='Study Goal Planner'||o.app==='Goal Card')){
+      if(Array.isArray(o.cards)) list=o.cards; else if(o.card) list=[o.card];
+    }
+    if(!list){ toast(t('tBad')); return; }
+    var added=0,upd=0;
+    list.forEach(function(raw){
+      var c=cleanCard(raw); if(!hasContent(c)) return;
+      if(!raw.id) c.id=uid();
+      var i=DB.cards.map(function(x){return x.id;}).indexOf(c.id);
+      if(i<0){ DB.cards.push(c); added++; }
+      else if((c.updated||'')>=(DB.cards[i].updated||'')&&JSON.stringify(c)!==JSON.stringify(DB.cards[i])){ DB.cards[i]=c; upd++; }
+    });
+    persist(); renderList(); toast(t('tRestored',{a:added,u:upd}));
+  };
+  r.readAsText(f);
+};
+
+/* ---------- about, language ---------- */
+var dlg=$('about');
+$('aboutBtn').onclick=function(){ if(dlg.showModal) dlg.showModal(); else dlg.setAttribute('open',''); };
+$('aboutClose').onclick=function(){ dlg.close?dlg.close():dlg.removeAttribute('open'); };
+dlg.addEventListener('click',function(e){ if(e.target===dlg) dlg.close(); });
+function applyTexts(){
+  document.documentElement.lang=L;
+  document.querySelectorAll('[data-t]').forEach(function(el){ el.textContent=t(el.getAttribute('data-t')); });
+  document.querySelectorAll('[data-th]').forEach(function(el){ el.innerHTML=t(el.getAttribute('data-th')); });
+  document.querySelectorAll('[data-tp]').forEach(function(el){ el.placeholder=t(el.getAttribute('data-tp')); });
+  stepEls.forEach(function(s,i){ s.querySelector('.step-num').textContent=t('stepOf',{n:i+1}); });
+  $('langBtn').textContent=t('langBtn'); $('langBtn').setAttribute('aria-label',t('langLabel')); $('langBtn').setAttribute('lang',L==='en'?'tr':'en');
+  $('aboutClose').setAttribute('aria-label',t('close'));
+  $('form').setAttribute('aria-label',t('formLabel')); $('previewCol').setAttribute('aria-label',t('previewLabel'));
+  renderList();
+  if(ED){ buildRows(); fillInputs(); renderEditor(); edButtons(); go(ED.step); }
+}
+$('langBtn').onclick=function(){ L=L==='en'?'tr':'en'; try{ localStorage.setItem(LKEY,L); }catch(e){}
+  DB.cards=DB.cards.map(function(c){ return c.sample?sampleCard(c.sampleKey,L,DB.sampleBase||today(),c):c; });
+  if(ED&&ED.card.sample&&!dirty()){ var k=ED.card; ED.card=sampleCard(k.sampleKey,L,DB.sampleBase||today(),k); ED.saved=JSON.stringify(ED.card); }
+  persist(); applyTexts(); };
+
+/* ---------- start ---------- */
+load(); persist();
+applyTexts();
+if(ED){ showEditor(); go(ED.step); } else show('home');
+})();
+</script>
+</body>
+</html>
